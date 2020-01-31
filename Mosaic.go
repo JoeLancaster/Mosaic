@@ -14,7 +14,8 @@ import (
 	"runtime"
 )
 
-func AvgWorker(jobs <-chan string, results chan<- color.RGBA, source_file_path string) {
+func AvgWorker(jobs <-chan string, results chan<- color.RGBA, mins chan<- image.Rectangle, source_file_path string) {
+	minx, miny := math.MaxInt32, math.MaxInt32
 	for fname := range jobs {
 		reader, err := os.Open(source_file_path + fname)
 		if err != nil {
@@ -29,12 +30,26 @@ func AvgWorker(jobs <-chan string, results chan<- color.RGBA, source_file_path s
 			fmt.Println(err)
 			return
 		}
+		x, y := AbsDimension(m.Bounds())
+		if x < minx {
+			minx = x
+		}
+		if y < miny {
+			miny = y
+		}
 		reader.Close()
 		r, g, b, a := Average(m)
 		//results <- color.RGBA{uint8(r >> 8), uint8(g >> 8), uint8(b >> 8), uint8(a >> 8)}
 		//fmt.Printf("r: %d g: %d b: %d\n", r, g, b)
 		results <- color.RGBA{r, g, b, a}
 	}
+	var b image.Rectangle
+	b.Min.X = 0
+	b.Min.Y = 0
+	b.Max.X = minx
+	b.Max.Y = miny
+	mins <- b
+	return
 }
 
 func main() {
@@ -83,36 +98,11 @@ func main() {
 	nofiles := len(files)
 	results := make(chan color.RGBA, nofiles)
 	imgs := make(chan string, nofiles)
-	fmt.Printf("Getting image sizes.\n")
-	var min_x, min_y uint32 = math.MaxUint32, math.MaxUint32
-	for i := 0; i < nofiles; i++ {
-		fname := files[i].Name()
-		reader, err := os.Open(source_file_path + fname)
-		if err != nil {
-			if fname != "" {
-				fmt.Printf("Couldn't open: %s\n", fname)
-			}
-			fmt.Println(err)
-			return
-		}
-		m, _, err := image.Decode(reader)
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		x, y := AbsDimension(m.Bounds())
-		if min_x > x {
-			min_x = x
-		}
-		if min_y > y {
-			min_y = y
-		}
-		reader.Close()
-	}
-	fmt.Printf("min x: %d, min_y: %d\n", min_x, min_y)
+	mins := make(chan image.Rectangle, runtime.NumCPU())
+
 	fmt.Printf("Spawning: %d worker threads\n", runtime.NumCPU())
 	for w := 1; w <= runtime.NumCPU(); w++ {
-		go AvgWorker(imgs, results, source_file_path)
+		go AvgWorker(imgs, results, mins, source_file_path)
 	}
 	for _, f := range files {
 		imgs <- f.Name()
@@ -125,6 +115,21 @@ func main() {
 		//		fmt.Printf("r: %d g: %d b: %d\n", col.R, col.G, col.B)
 	}
 	close(results)
+	close(mins)
+	var minD image.Rectangle
+	minD.Min.X = 0
+	minD.Min.Y = 0
+	minD.Max.X = math.MaxInt32
+	minD.Max.Y = math.MaxInt32
+	for e := range mins {
+		if e.Max.X < minD.Max.X {
+			minD.Max.X = e.Max.X
+		}
+		if e.Max.Y < minD.Max.Y {
+			minD.Max.Y = e.Max.Y
+		}
+	}
+	fmt.Printf("min x: %d, min y: %d\n", minD.Max.X, minD.Max.Y)
 	fmt.Printf("Finished averaging %d images.\n", nofiles)
 	//bounds := m.Bounds()
 	var new_bounds image.Rectangle

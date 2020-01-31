@@ -14,8 +14,8 @@ type RGBA struct {
 
 func Average(m image.Image) (uint8, uint8, uint8, uint8) {
 	bounds := m.Bounds()
-	var cr, cg, cb, ca uint32
-	var rr, rg, rb, ra uint32 = 0, 0, 0, 0
+	var cr, cg, cb, ca int
+	var rr, rg, rb, ra int = 0, 0, 0, 0
 	xdif, ydif := AbsDimension(bounds)
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		cr, cg, cb, ca = 0, 0, 0, 0
@@ -24,10 +24,10 @@ func Average(m image.Image) (uint8, uint8, uint8, uint8) {
 			if y == 0 && x == 0 {
 
 			}
-			cr += (r >> 8)
-			cg += (g >> 8)
-			cb += (b >> 8)
-			ca += (a >> 8)
+			cr += int((r >> 8))
+			cg += int((g >> 8))
+			cb += int((b >> 8))
+			ca += int((a >> 8))
 		}
 		rr += (cr / xdif)
 		rg += (cg / xdif)
@@ -47,8 +47,8 @@ func AspectRatio(b image.Rectangle) float32 {
 	return float32(width / height)
 }
 
-func AbsDimension(b image.Rectangle) (uint32, uint32) {
-	xdif := uint32(b.Max.X - b.Min.X)
-	ydif := uint32(b.Max.Y - b.Min.Y)
+func AbsDimension(b image.Rectangle) (int, int) {
+	xdif := (b.Max.X - b.Min.X)
+	ydif := (b.Max.Y - b.Min.Y)
 	return xdif, ydif
 }
