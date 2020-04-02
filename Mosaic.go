@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"image"
 	"image/color"
@@ -11,13 +10,14 @@ import (
 	"io/ioutil"
 	"math"
 	"os"
+	"path/filepath"
 	"runtime"
 )
 
-func AvgWorker(jobs <-chan string, results chan<- color.RGBA, mins chan<- image.Rectangle, source_file_path string) {
+func AvgWorker(jobs <-chan string, results chan<- color.RGBA, mins chan<- image.Rectangle, sourcePath string) {
 	minx, miny := math.MaxInt32, math.MaxInt32
 	for fname := range jobs {
-		reader, err := os.Open(source_file_path + fname)
+		reader, err := os.Open(filepath.Join(sourcePath, fname))
 		if err != nil {
 			if fname != "" {
 				fmt.Printf("Couldn't open: %s\n", fname)
@@ -53,34 +53,16 @@ func AvgWorker(jobs <-chan string, results chan<- color.RGBA, mins chan<- image.
 }
 
 func main() {
-	var target_file_name string
-	var source_file_path string
-	const NO_DELIM = "\nInput didn't end in a delimiter. Did you use C-d instead of RET?"
+	var targetFileName string
+	var sourcePath string
 	argLen := len(os.Args)
-	if argLen == 1 { //no arguments given
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("Enter target image filename/path: ")
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println(NO_DELIM)
-			return
-		}
-		target_file_name = text
-		fmt.Print("Enter source images path: ")
-		text, err = reader.ReadString('\n')
-		if err != nil {
-			fmt.Println(NO_DELIM)
-			return
-		}
-		source_file_path = text
-	} else if argLen == 2 {
-		fmt.Println("Run mosaic with two arguments. For example mosaic target_image /path/to/sources")
-		return
+	if argLen < 3 { //too few arguments
+		//print help message
 	} else {
-		target_file_name = os.Args[1]
-		source_file_path = os.Args[2]
+		targetFileName, _ = filepath.Abs(os.Args[1])
+		sourcePath, _ = filepath.Abs(os.Args[2])
 	}
-	reader, err := os.Open(target_file_name)
+	reader, err := os.Open(targetFileName)
 	if err != nil {
 		fmt.Println("Couldn't open target file.")
 		fmt.Println(err)
@@ -90,7 +72,7 @@ func main() {
 	m, _, err := image.Decode(reader)
 	r, g, b, a := Average(m)
 	fmt.Printf("Color averages in target image: r: %d, g: %d, b: %d, a: %d\n", r, g, b, a)
-	files, err := ioutil.ReadDir(source_file_path)
+	files, err := ioutil.ReadDir(sourcePath)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -102,7 +84,7 @@ func main() {
 
 	fmt.Printf("Spawning: %d worker threads\n", runtime.NumCPU())
 	for w := 1; w <= runtime.NumCPU(); w++ {
-		go AvgWorker(imgs, results, mins, source_file_path)
+		go AvgWorker(imgs, results, mins, sourcePath)
 	}
 	for _, f := range files {
 		imgs <- f.Name()
