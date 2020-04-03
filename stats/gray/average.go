@@ -4,7 +4,7 @@ import (
 	"image"
 	"math"
 	"math/bits"
-	"mosaic/stats"
+	"github.com/JoeLancaster/mosaic/stats"
 )
 
 func extractMode(hist []int, shift uint8) uint8 {
