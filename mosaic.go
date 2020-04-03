@@ -1,4 +1,4 @@
-package main
+package main // import "github.com/JoeLancaster/mosaic"
 
 import (
 	"fmt"
@@ -9,7 +9,6 @@ import (
 	"image/png"
 	"io/ioutil"
 	"math"
-	"mosaic/stats/gray"
 	"os"
 	"path/filepath"
 	"runtime"
