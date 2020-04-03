@@ -1,0 +1,5 @@
+package stats
+
+func IsPowerOfTwo(n uint8) {
+	return (n & (n - 1)) == 0
+}
